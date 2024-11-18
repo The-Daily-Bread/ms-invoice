@@ -2,8 +2,6 @@ class InvoiceItem {
   /** @type {string} */
   id;
   /** @type {string} */
-  invoiceId;
-  /** @type {string} */
   description;
   /** @type {number} */
   quantity;
@@ -13,14 +11,12 @@ class InvoiceItem {
   /**
    * 
    * @param {string} id 
-   * @param {string} invoiceId 
    * @param {string} description 
    * @param {number} quantity 
    * @param {number} rate 
    */
-  constructor(id, invoiceId, description, quantity, rate) {
+  constructor(id, description, quantity, rate) {
     this.id = id;
-    this.invoiceId = invoiceId;
     this.description = description;
     this.quantity = quantity;
     this.rate = rate;
@@ -29,7 +25,6 @@ class InvoiceItem {
   toResponse() {
     return {
       id: this.id,
-      invoiceId: this.invoiceId,
       description: this.description,
       quantity: this.quantity,
       rate: this.rate
@@ -41,14 +36,6 @@ class InvoiceItem {
    * @param {InvoiceItem} invoice 
    */
   static checkFields(invoice) {
-    if (!invoice.id) {
-      throw new Error('id is required');
-    }
-
-    if (!invoice.invoiceId) {
-      throw new Error('invoiceId is required');
-    }
-
     if (!invoice.description) {
       throw new Error('description is required');
     }

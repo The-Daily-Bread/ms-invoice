@@ -10,7 +10,9 @@ class Invoice {
   /** @type {string} */
   dueDate;
   /** @type {string} */
-  vendorId;
+  vendor;
+  /** @type {string} */
+  customer;
   /** @type {InvoiceItem[]} */
   items;
 
@@ -20,15 +22,17 @@ class Invoice {
    * @param {string} invoiceNumber 
    * @param {string} invoiceDate 
    * @param {string} dueDate 
-   * @param {string} vendorId 
+   * @param {string} vendor
+   * @param {string} customer
    * @param {InvoiceItem[]} items 
    */
-  constructor(id, invoiceNumber, invoiceDate, dueDate, vendorId, items) {
+  constructor(id, invoiceNumber, invoiceDate, dueDate, vendor, customer, items) {
     this.id = id;
     this.invoiceNumber = invoiceNumber;
     this.invoiceDate = invoiceDate;
     this.dueDate = dueDate;
-    this.vendorId = vendorId;
+    this.vendor = vendor;
+    this.customer = customer;
     this.items = items;
   }
 
@@ -38,7 +42,8 @@ class Invoice {
       invoiceNumber: this.invoiceNumber,
       invoiceDate: this.invoiceDate,
       dueDate: this.dueDate,
-      vendorId: this.vendorId,
+      vendor: this.vendor,
+      customer: this.customer,
       items: this.items.map(item => item.toResponse())
     }
   }
@@ -47,10 +52,6 @@ class Invoice {
    * @param {Invoice} invoice 
    */
   static checkFields(invoice) {
-    if (!invoice.id) {
-      throw new Error('id is required');
-    }
-
     if (!invoice.invoiceNumber) {
       throw new Error('invoiceNumber is required');
     }
@@ -63,11 +64,15 @@ class Invoice {
       throw new Error('dueDate is required');
     }
 
-    if (!invoice.vendorId) {
-      throw new Error('vendorId is required');
+    if (!invoice.vendor) {
+      throw new Error('vendor is required');
     }
 
-    if (!invoice.items) {
+    if (!invoice.customer) {
+      throw new Error('customer is required');
+    }
+
+    if (!invoice.items || !invoice.items.length) {
       throw new Error('items is required');
     }
 

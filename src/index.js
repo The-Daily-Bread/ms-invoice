@@ -1,9 +1,14 @@
 const amqp = require('amqplib/callback_api');
-const { createInvoice } = require('./service/service');
+const { createInvoice } = require('./service/invoice');
+const Factory = require('./dao/factory');
+const { LogDao } = require('./dao/log');
 
 const QUEUE_NAME = 'tdb-invoice-queue';
+const DEAD_LETTER_QUEUE = 'tdb-invoice-dl';
 
-amqp.connect('amqps://ipyybbdy:jvZm9ATl2A0Q-Fdei2l8vP0rFkWjKfFU@prawn.rmq.cloudamqp.com/ipyybbdy', function(connectionError, connection) {
+const AMQP_URL = process.env.AMQP_URL || '';
+
+amqp.connect(AMQP_URL, function(connectionError, connection) {
   if (connectionError) {
     throw connectionError;
   }
@@ -13,7 +18,8 @@ amqp.connect('amqps://ipyybbdy:jvZm9ATl2A0Q-Fdei2l8vP0rFkWjKfFU@prawn.rmq.clouda
       throw createChannelError;
     
     channel.assertQueue(QUEUE_NAME, {
-      durable: true
+      durable: true,
+      deadLetterExchange: DEAD_LETTER_QUEUE,
     });
 
     channel.prefetch(1);
@@ -21,30 +27,39 @@ amqp.connect('amqps://ipyybbdy:jvZm9ATl2A0Q-Fdei2l8vP0rFkWjKfFU@prawn.rmq.clouda
     console.info(" [*] Waiting for messages in %s. To exit press CTRL+C", QUEUE_NAME);
 
     channel.consume(QUEUE_NAME, function(msg) {
-      var secs = msg.content.toString().split('.').length - 1;
-
       console.info(" [x] Received %s", msg.content.toString());
+
+      const factory = new Factory();
+      const connection = factory.getConnection();
+      const logDao = new LogDao(connection);
 
       try {
         const parsedJson = JSON.parse(msg.content.toString());
 
         createInvoice(parsedJson)
           .then(() => {
-            console.info(" [x] Done");
-            channel.ack(msg);
+            console.info('Invoice created successfully');
+            channel.ack(msg, false);
           })
-          .catch(() => {
-            console.error(" [x] Error");
-            channel.nack(msg);
+          .catch(error => {
+            console.error('Error creating invoice:', error.message);
+            channel.nack(msg, false, false);
+            channel.publish(DEAD_LETTER_QUEUE, '', msg.content);
           });
       } catch (error) {
-        channel.nack(msg);
+        logDao.put({
+          timestamp: Date.now(),
+          content: msg.content.toString(),
+          message: error.message
+        }).catch(err => {
+          console.error('Error logging error:', err.message);
+        });
+        
+        channel.nack(msg, false, false);
+        channel.publish(DEAD_LETTER_QUEUE, '', msg.content);
+      } finally {
+        factory.close();
       }
-      
-      setTimeout(function() {
-        console.info(" [x] Done");
-        channel.ack(msg);
-      }, secs * 1000);
     }, {
       noAck: false
     });
